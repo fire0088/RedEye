@@ -95,7 +95,7 @@ func _layout() -> void:
 	if _nodes.is_empty():
 		return
 	var center := size * 0.5
-	var R: float = min(size.x, size.y) * 0.5 - 54.0
+	var R: float = minf(size.x, size.y) * 0.5 - 54.0
 	if R < 40:
 		R = 40.0
 	var assets := []
@@ -107,7 +107,7 @@ func _layout() -> void:
 			"finding": finds.append(i)
 			"cred": creds.append(i)
 
-	var na = max(1, assets.size())
+	var na = maxi(1, assets.size())
 	for k in assets.size():
 		var ang: float = -PI / 2 + TAU * k / na
 		_nodes[assets[k]]["angle"] = ang
@@ -123,7 +123,7 @@ func _layout() -> void:
 	for aidx in asset_finds.keys():
 		var group: Array = asset_finds[aidx]
 		var base: float = _nodes[aidx]["angle"]
-		var span: float = min(0.5, 0.16 * group.size())
+		var span: float = minf(0.5, 0.16 * group.size())
 		for j in group.size():
 			var fidx = group[j]
 			if placed.has(fidx):
@@ -140,7 +140,7 @@ func _layout() -> void:
 		if not placed.has(i):
 			leftover.append(i)
 	for k in leftover.size():
-		var ang3: float = TAU * k / max(1, leftover.size())
+		var ang3: float = TAU * k / maxi(1, leftover.size())
 		_nodes[leftover[k]]["pos"] = center + Vector2(cos(ang3), sin(ang3)) * (R * R_FIND)
 
 	var cred_assets := {}
@@ -160,7 +160,7 @@ func _layout() -> void:
 				sy += sin(_nodes[aidx2]["angle"])
 			ang4 = atan2(sy, sx)
 		else:
-			ang4 = PI / 2 + TAU * k / max(1, creds.size())
+			ang4 = PI / 2 + TAU * k / maxi(1, creds.size())
 		_nodes[cidx]["pos"] = center + Vector2(cos(ang4), sin(ang4)) * (R * R_CRED)
 
 	_pulses = []
@@ -186,7 +186,7 @@ func _layout() -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Palette.BG)
 	var center := size * 0.5
-	var R: float = min(size.x, size.y) * 0.5 - 54.0
+	var R: float = minf(size.x, size.y) * 0.5 - 54.0
 	if R < 40:
 		R = 40.0
 
@@ -209,7 +209,7 @@ func _draw() -> void:
 		return
 
 	for e in _edges:
-		var lit := _hover < 0 or _hover == e["a"] or _hover == e["b"]
+		var lit: bool = _hover < 0 or _hover == e["a"] or _hover == e["b"]
 		var col: Color
 		if e["kind"] == "opens":
 			col = Palette.AMBER
@@ -304,9 +304,9 @@ func _hud() -> void:
 	_legend(Vector2(lx, 92), Palette.CYAN, "has screenshot")
 	var chains: Array = _graph.get("chains", [])
 	if chains.size() > 0:
-		var yy := size.y - 12 - min(3, chains.size()) * 15
+		var yy := size.y - 12 - mini(3, chains.size()) * 15
 		_draw_text(Vector2(16, yy - 4), "ATTACK CHAINS", Palette.WARN, 11)
-		for j in min(3, chains.size()):
+		for j in mini(3, chains.size()):
 			_draw_text(Vector2(16, yy + 14 + j * 15), "-> " + str(chains[j].get("text", "")), Palette.TEXT, 11)
 
 func _legend(pos: Vector2, col: Color, label: String) -> void:
@@ -323,7 +323,7 @@ func _along(pts: PackedVector2Array, t: float) -> Vector2:
 	var total := 0.0
 	for i in range(pts.size() - 1):
 		total += pts[i].distance_to(pts[i + 1])
-	var target := total * clamp(t, 0.0, 1.0)
+	var target := total * clampf(t, 0.0, 1.0)
 	var acc := 0.0
 	for i in range(pts.size() - 1):
 		var seg := pts[i].distance_to(pts[i + 1])
