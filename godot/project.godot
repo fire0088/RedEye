@@ -1,0 +1,25 @@
+; REDEYE -- Godot 4 front-end. The heavy lifting (AWS Bedrock, MCP servers,
+; SQLite, crypto vault) lives in the Python backend daemon; this project is a
+; thin client that talks to it over a local socket. Start the daemon first:
+;     python serve.py
+; then open this project in Godot 4.4+ (4.7 recommended) and press F5.
+
+config_version=5
+
+[application]
+config/name="REDEYE"
+config/description="HAL-lineage red-team console -- Godot front-end to the Python backend daemon."
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.7")
+
+[autoload]
+Backend="*res://scripts/backend.gd"
+Palette="*res://scripts/palette.gd"
+
+[display]
+window/size/viewport_width=1360
+window/size/viewport_height=820
+window/stretch/mode="canvas_items"
+
+[rendering]
+environment/defaults/default_clear_color=Color(0.02,0.01,0.02,1)

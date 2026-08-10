@@ -1,0 +1,273 @@
+{
+  "//": "Add an MCP server by adding a block here. No code changes needed. See servers/_template_server.py.",
+  "//fields": "transport(stdio) | command | args | env | cwd | name | category | color[r,g,b] | extractor | enabled",
+  "//extractor": "routes tool results: 'nmap'/'roslyn' -> map nodes; 'nuclei'/'wapiti' -> findings DB; 'secret' -> key vault; '' -> chat only",
+  "servers": {
+    "nmap": {
+      "name": "nmap",
+      "category": "recon",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/nmap_server.py"
+      ],
+      "env": {},
+      "color": [
+        255,
+        60,
+        60
+      ],
+      "extractor": "nmap",
+      "enabled": true
+    },
+    "roslyn-endpoints": {
+      "name": "roslyn endpoints",
+      "category": "appsec",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/roslyn_endpoints_server.py"
+      ],
+      "env": {
+        "//REDEYE_ROSLYN_CMD": "set to your extractor, e.g. 'dotnet /opt/reachnet/EndpointExtractor.dll --json {project}'"
+      },
+      "color": [
+        80,
+        180,
+        255
+      ],
+      "extractor": "roslyn",
+      "enabled": true
+    },
+    "nuclei": {
+      "name": "nuclei",
+      "category": "vuln",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/nuclei_server.py"
+      ],
+      "env": {
+        "//REDEYE_NUCLEI_MOCK": "set to 1 to force mock findings; unset to use a real nuclei binary on PATH"
+      },
+      "color": [
+        255,
+        120,
+        60
+      ],
+      "extractor": "nuclei",
+      "enabled": true
+    },
+    "wapiti": {
+      "name": "wapiti",
+      "category": "webscan",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/wapiti_server.py"
+      ],
+      "env": {
+        "//REDEYE_WAPITI_MOCK": "set to 1 to force mock vulns; unset to use a real wapiti binary on PATH"
+      },
+      "color": [
+        180,
+        120,
+        255
+      ],
+      "extractor": "wapiti",
+      "enabled": true
+    },
+    "aws": {
+      "name": "aws",
+      "category": "cloud",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/aws_server.py"
+      ],
+      "env": {
+        "//AWS_PROFILE": "named .aws profile to use (or pass profile= to the tool)",
+        "//REDEYE_AWS_MOCK": "set to 1 to force mock cloud inventory"
+      },
+      "color": [
+        255,
+        153,
+        0
+      ],
+      "extractor": "aws",
+      "enabled": true
+    },
+    "crowdstrike": {
+      "name": "crowdstrike",
+      "category": "edr",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/crowdstrike_server.py"
+      ],
+      "env": {
+        "//FALCON_CLIENT_ID": "CrowdStrike Falcon API client id",
+        "//FALCON_CLIENT_SECRET": "CrowdStrike Falcon API client secret",
+        "//FALCON_BASE_URL": "API host, e.g. https://api.us-2.crowdstrike.com",
+        "//REDEYE_CROWDSTRIKE_MOCK": "set to 1 to force mock"
+      },
+      "color": [
+        230,
+        30,
+        40
+      ],
+      "extractor": "crowdstrike",
+      "enabled": true
+    },
+    "tenable": {
+      "name": "tenable",
+      "category": "vuln",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/tenable_server.py"
+      ],
+      "env": {
+        "//TENABLE_ACCESS_KEY": "Tenable.io access key",
+        "//TENABLE_SECRET_KEY": "Tenable.io secret key",
+        "//REDEYE_TENABLE_MOCK": "set to 1 to force mock"
+      },
+      "color": [
+        0,
+        110,
+        210
+      ],
+      "extractor": "tenable",
+      "enabled": true
+    },
+    "wiz": {
+      "name": "wiz",
+      "category": "cloud",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/wiz_server.py"
+      ],
+      "env": {
+        "//WIZ_CLIENT_ID": "Wiz service-account client id",
+        "//WIZ_CLIENT_SECRET": "Wiz service-account client secret",
+        "//WIZ_API_URL": "tenant GraphQL endpoint, e.g. https://api.us1.app.wiz.io/graphql",
+        "//WIZ_AUTH_URL": "override token endpoint if needed",
+        "//REDEYE_WIZ_MOCK": "set to 1 to force mock"
+      },
+      "color": [
+        70,
+        200,
+        160
+      ],
+      "extractor": "wiz",
+      "enabled": true
+    },
+    "http-probe": {
+      "name": "http-probe",
+      "category": "probe",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/http_probe_server.py"
+      ],
+      "env": {
+        "//REDEYE_PROBE_MOCK": "set to 1 to force mock probe responses"
+      },
+      "color": [
+        120,
+        200,
+        255
+      ],
+      "extractor": "probe",
+      "enabled": true
+    },
+    "httpx": {
+      "name": "httpx",
+      "category": "scanner",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/httpx_server.py"
+      ],
+      "env": {
+        "//REDEYE_HTTPX_MOCK": "set to 1 to force mock"
+      },
+      "color": [
+        120,
+        200,
+        255
+      ],
+      "extractor": "httpx",
+      "enabled": true
+    },
+    "subfinder": {
+      "name": "subfinder",
+      "category": "recon",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/subfinder_server.py"
+      ],
+      "env": {},
+      "color": [
+        70,
+        230,
+        160
+      ],
+      "extractor": "subfinder",
+      "enabled": true
+    },
+    "masscan": {
+      "name": "masscan",
+      "category": "scanner",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/masscan_server.py"
+      ],
+      "env": {},
+      "color": [
+        255,
+        176,
+        0
+      ],
+      "extractor": "masscan",
+      "enabled": true
+    },
+    "trivy": {
+      "name": "trivy",
+      "category": "scanner",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/trivy_server.py"
+      ],
+      "env": {},
+      "color": [
+        180,
+        120,
+        255
+      ],
+      "extractor": "trivy",
+      "enabled": true
+    },
+    "gowitness": {
+      "name": "gowitness",
+      "category": "recon",
+      "transport": "stdio",
+      "command": "python3",
+      "args": [
+        "servers/gowitness_server.py"
+      ],
+      "env": {},
+      "color": [
+        90,
+        200,
+        255
+      ],
+      "extractor": "gowitness",
+      "enabled": true
+    }
+  }
+}
