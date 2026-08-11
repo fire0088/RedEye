@@ -1,0 +1,6 @@
+# REDEYE backend daemon (serve.py) + Godot front-end.
+# The Godot UI needs no Python packages; these are for the backend only.
+mcp>=2.0
+boto3>=1.34
+cryptography>=42    # optional: at-rest vault encryption (plaintext fallback if absent)
+fpdf2>=2.8  # PDF report export (pure Python, optional)
