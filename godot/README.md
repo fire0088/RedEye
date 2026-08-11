@@ -349,3 +349,20 @@ The panel refreshes as state changes (`recommendations` RPC; logic in
 - **Top-suggestion prompt**: the console shows a subtle "▸ suggested: ..." line
   with the #1 next step; clicking it runs that action (main dispatches it), so
   you get a nudge even with the NEXT STEPS panel closed.
+
+## Tools & integrations (F10)
+
+A settings tab for the available tools and their integration settings (URL,
+username, API key, etc.). Non-sensitive values are saved to config; sensitive
+values are stored in the encrypted **key vault** (F5) -- config keeps only a
+`vault:<id>` reference, never the secret. Each secret field can either link an
+existing vault entry or create a new one inline.
+
+Tools that support it (AWS, Tenable, Wiz, CrowdStrike) can be added **multiple
+times** -- e.g. two Tenable tenants or several AWS accounts -- each instance with
+its own URL and its own vault-backed keys. Use the "add" dropdown to create an
+instance and "remove" to delete one. Local scanner tools appear as single
+entries. Backed by the `list_integrations` / `add_integration` /
+`set_integration_field` / `save_integration_secret` / `link_integration_secret`
+/ `remove_integration` RPCs; schemas + env resolution live in
+`redeye/integrations.py`, instances in the `integrations` DB table.

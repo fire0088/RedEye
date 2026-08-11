@@ -13,6 +13,7 @@ const Vault     = preload("res://scripts/views/vault.gd")
 const LogView   = preload("res://scripts/views/log.gd")
 const Gallery   = preload("res://scripts/views/gallery.gd")
 const Versions  = preload("res://scripts/views/versions.gd")
+const ToolsView = preload("res://scripts/views/tools.gd")
 const Eye       = preload("res://scripts/eye.gd")
 
 var views: Dictionary = {}
@@ -36,12 +37,12 @@ var _adv_last := 0
 const FKEYS := {
 	KEY_F1: "console", KEY_F2: "map", KEY_F3: "inventory",
 	KEY_F4: "findings", KEY_F5: "vault", KEY_F6: "log", KEY_F7: "gallery",
-	KEY_F8: "versions",
+	KEY_F8: "versions", KEY_F10: "tools",
 }
 const NAV := [
 	["console", "F1 CONSOLE"], ["map", "F2 MAP"], ["inventory", "F3 INVENTORY"],
 	["findings", "F4 FINDINGS"], ["vault", "F5 VAULT"], ["log", "F6 LOG"],
-	["gallery", "F7 GALLERY"], ["versions", "F8 VERSIONS"],
+	["gallery", "F7 GALLERY"], ["versions", "F8 VERSIONS"], ["tools", "F10 TOOLS"],
 ]
 
 func _ready() -> void:
@@ -134,7 +135,7 @@ func _build_views() -> void:
 		"boot": Boot.new(), "console": Console.new(), "map": MapView.new(),
 		"inventory": Inventory.new(), "findings": Findings.new(),
 		"vault": Vault.new(), "log": LogView.new(), "gallery": Gallery.new(),
-		"versions": Versions.new(),
+		"versions": Versions.new(), "tools": ToolsView.new(),
 	}
 	for name in views:
 		var v: Control = views[name]

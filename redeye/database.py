@@ -155,6 +155,14 @@ class Store:
                 data    TEXT
             )""")
         c.execute("""
+            CREATE TABLE IF NOT EXISTS integrations (
+                id      TEXT PRIMARY KEY,
+                tool    TEXT,
+                name    TEXT,
+                config  TEXT DEFAULT '{}',   -- JSON: field -> value or vault:<id>
+                created REAL
+            )""")
+        c.execute("""
             CREATE TABLE IF NOT EXISTS screenshots (
                 id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 url     TEXT,
@@ -328,6 +336,59 @@ class Store:
             "GROUP BY label ORDER BY label").fetchall()]
 
     # -- snapshots (scan diffing) -------------------------------------------
+    # -- tool integration instances ----------------------------------------
+    def add_integration(self, iid: str, tool: str, name: str) -> str:
+        self.conn.execute(
+            "INSERT OR IGNORE INTO integrations(id,tool,name,config,created) "
+            "VALUES(?,?,?,?,?)", (iid, tool, name, "{}", time.time()))
+        self.conn.commit()
+        return iid
+
+    def list_integrations(self) -> list:
+        out = []
+        for r in self.conn.execute(
+                "SELECT id,tool,name,config FROM integrations ORDER BY tool,name").fetchall():
+            try:
+                cfg = json.loads(r["config"] or "{}")
+            except Exception:  # noqa: BLE001
+                cfg = {}
+            out.append({"id": r["id"], "tool": r["tool"], "name": r["name"],
+                        "config": cfg})
+        return out
+
+    def get_integration(self, iid: str) -> dict | None:
+        r = self.conn.execute(
+            "SELECT id,tool,name,config FROM integrations WHERE id=?",
+            (iid,)).fetchone()
+        if not r:
+            return None
+        try:
+            cfg = json.loads(r["config"] or "{}")
+        except Exception:  # noqa: BLE001
+            cfg = {}
+        return {"id": r["id"], "tool": r["tool"], "name": r["name"], "config": cfg}
+
+    def set_integration_field(self, iid: str, field: str, value: str) -> None:
+        cur = self.get_integration(iid)
+        if not cur:
+            return
+        cfg = cur["config"]
+        if value == "":
+            cfg.pop(field, None)
+        else:
+            cfg[field] = value
+        self.conn.execute("UPDATE integrations SET config=? WHERE id=?",
+                          (json.dumps(cfg), iid))
+        self.conn.commit()
+
+    def rename_integration(self, iid: str, name: str) -> None:
+        self.conn.execute("UPDATE integrations SET name=? WHERE id=?", (name, iid))
+        self.conn.commit()
+
+    def remove_integration(self, iid: str) -> None:
+        self.conn.execute("DELETE FROM integrations WHERE id=?", (iid,))
+        self.conn.commit()
+
     def add_snapshot(self, label: str, data: dict) -> int:
         cur = self.conn.execute(
             "INSERT INTO snapshots(ts,label,data) VALUES(?,?,?)",

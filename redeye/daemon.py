@@ -53,6 +53,7 @@ from . import diffing as DIFF
 from . import exporters
 from . import gallery as GAL
 from . import graph as GRAPH
+from . import integrations as INTEG
 from . import reporting as REPORT
 from . import settings as S
 from .bedrock import available_profiles
@@ -92,6 +93,8 @@ class RedeyeDaemon:
         # used to flag inventory assets in/out of scope.
         self.config_path = config.get("config_path", "")
         st0 = config.get("settings")
+        self.settings = st0 if isinstance(st0, dict) else {}
+        self.servers = config.get("servers", {})    # mcp_config server defs
         entries = []
         if st0:
             raw = S.get(st0, "scope", "targets", "")
@@ -478,6 +481,77 @@ class RedeyeDaemon:
                                  "fingerprint", "httpx")):
             return "url"
         return "target"
+
+    def _list_integrations(self) -> dict:
+        with self.db_lock:
+            # auto-create a singleton instance for non-multiple tool types
+            existing = {i["tool"] for i in self.store.list_integrations()}
+            for key, scfg in (self.servers or {}).items():
+                if str(key).startswith("_"):
+                    continue
+                if not INTEG.multiple(key) and key not in existing:
+                    self.store.add_integration(key, key,
+                                               INTEG.schema_for(key, scfg.get("name", key))["name"])
+            instances = self.store.list_integrations()
+            vault = [dict(r) for r in self.store.list_vault()]
+        vault_by_id = {str(v.get("id")): v for v in vault}
+
+        def build_fields(tool, cfg):
+            fields = []
+            for fdef in INTEG.schema_for(tool)["fields"]:
+                raw = str(cfg.get(fdef["key"], ""))
+                item = {"key": fdef["key"], "label": fdef["label"],
+                        "type": fdef["type"], "sensitive": INTEG.is_secret(fdef)}
+                if item["sensitive"]:
+                    linked = raw.startswith("vault:")
+                    vid = raw.split(":", 1)[1] if linked else ""
+                    v = vault_by_id.get(vid, {})
+                    item["linked"] = linked
+                    item["vault_id"] = vid
+                    item["vault_label"] = (v.get("username") or v.get("kind") or "") if linked else ""
+                    item["has_value"] = linked
+                else:
+                    item["value"] = raw
+                    item["has_value"] = raw != ""
+                fields.append(item)
+            return fields
+
+        out_instances = []
+        for inst in instances:
+            scfg = self.servers.get(inst["tool"], {})
+            sch = INTEG.schema_for(inst["tool"], scfg.get("name", inst["tool"]))
+            out_instances.append({
+                "id": inst["id"], "tool": inst["tool"], "name": inst["name"],
+                "type_name": sch["name"], "multiple": sch.get("multiple", False),
+                "category": scfg.get("category", ""),
+                "status": self._server_status.get(inst["tool"], "offline"),
+                "fields": build_fields(inst["tool"], inst["config"]),
+            })
+        # tool types that support adding more instances
+        available = []
+        for key, scfg in (self.servers or {}).items():
+            if str(key).startswith("_"):
+                continue
+            if INTEG.multiple(key):
+                available.append({"tool": key,
+                                  "name": INTEG.schema_for(key, scfg.get("name", key))["name"]})
+        return {"instances": out_instances, "available": available}
+
+    def _integration_env(self, iid: str) -> dict:
+        """Resolve an instance's settings to env vars (vault refs -> secrets),
+        for (re)connecting the tool's server process."""
+        with self.db_lock:
+            inst = self.store.get_integration(iid)
+        if not inst:
+            return {}
+
+        def _reveal(vid):
+            try:
+                with self.db_lock:
+                    return self.store.reveal_secret(int(vid))
+            except Exception:  # noqa: BLE001
+                return ""
+        return INTEG.resolve_env(inst["tool"], inst["config"], _reveal)
 
     def _recommendations(self) -> list:
         corr = self._correlation()
@@ -871,6 +945,55 @@ class RedeyeDaemon:
                 findings = [dict(r) for r in self.store.list_findings()]
             comps = COMP.build_components(assets, findings)
             return COMP.search_components(comps, str(m.get("query", "")))
+        # -- tool integrations (instance-based; a tool can have many instances) --
+        if name == "list_integrations":
+            return self._list_integrations()
+        if name == "add_integration":
+            iid = f"{m['tool']}-{secrets.token_hex(3)}"
+            with self.db_lock:
+                self.store.add_integration(iid, str(m["tool"]),
+                                           str(m.get("name", "") or m["tool"]))
+            self._broadcast({"type": "IntegrationUpdated", "id": iid})
+            return {"id": iid}
+        if name == "remove_integration":
+            with self.db_lock:
+                self.store.remove_integration(str(m["id"]))
+            self._broadcast({"type": "IntegrationUpdated", "id": str(m["id"])})
+            return True
+        if name == "rename_integration":
+            with self.db_lock:
+                self.store.rename_integration(str(m["id"]), str(m.get("name", "")))
+            self._broadcast({"type": "IntegrationUpdated", "id": str(m["id"])})
+            return True
+        if name == "set_integration_field":
+            with self.db_lock:
+                self.store.set_integration_field(str(m["id"]), str(m["field"]),
+                                                 str(m.get("value", "")))
+            self._broadcast({"type": "IntegrationUpdated", "id": str(m["id"])})
+            return True
+        if name == "save_integration_secret":
+            with self.db_lock:
+                inst = self.store.get_integration(str(m["id"]))
+                nm = (inst or {}).get("name", m["id"])
+                vid = self.store.add_credential(
+                    kind=f"integration:{(inst or {}).get('tool','')}",
+                    username=f"{nm}:{m['field']}", secret=str(m.get("secret", "")),
+                    scope=str(m["id"]), source="integration", status="untested")
+                self.store.set_integration_field(str(m["id"]), str(m["field"]),
+                                                 f"vault:{vid}")
+            self._broadcast({"type": "IntegrationUpdated", "id": str(m["id"])})
+            return {"vault_id": vid}
+        if name == "link_integration_secret":
+            with self.db_lock:
+                self.store.set_integration_field(str(m["id"]), str(m["field"]),
+                                                 f"vault:{m['vault_id']}")
+            self._broadcast({"type": "IntegrationUpdated", "id": str(m["id"])})
+            return True
+        if name == "clear_integration_field":
+            with self.db_lock:
+                self.store.set_integration_field(str(m["id"]), str(m["field"]), "")
+            self._broadcast({"type": "IntegrationUpdated", "id": str(m["id"])})
+            return True
         rows = lambda rs: [dict(r) for r in rs]  # noqa: E731
         with self.db_lock:
             if name == "available_profiles":

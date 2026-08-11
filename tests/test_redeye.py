@@ -301,3 +301,37 @@ def test_advisor_version_chain():
     assert any("flagged software" in t for t in titles)        # version awareness
     assert any("Review" in t and "similarity" in t for t in titles)  # gallery chain
     assert any("Diff against your baseline" == t for t in titles)    # snapshot chain
+
+
+# ---- new: multi-instance tool integrations ----
+def test_integration_schema_and_multiple():
+    from redeye import integrations as IN
+    assert IN.multiple("tenable") and IN.multiple("aws")
+    assert not IN.multiple("nmap")
+    sec = [f for f in IN.schema_for("tenable")["fields"] if IN.is_secret(f)]
+    assert {f["key"] for f in sec} == {"access_key", "secret_key"}
+    # scanner default schema
+    assert IN.schema_for("nmap")["fields"][0]["key"] == "binary"
+
+def test_integration_env_resolves_vault():
+    from redeye import integrations as IN
+    vals = {"base_url": "https://t", "access_key": "vault:7", "secret_key": "plain"}
+    env = IN.resolve_env("tenable", vals, lambda vid: "REVEALED" if vid == "7" else "")
+    assert env["TENABLE_URL"] == "https://t"
+    assert env["TENABLE_ACCESS_KEY"] == "REVEALED"   # vault ref resolved
+    assert env["TENABLE_SECRET_KEY"] == "plain"
+
+def test_integration_instances_isolated(tmp_path):
+    import json as _j
+    from redeye.database import Store
+    st = Store(str(tmp_path / "t.db"))
+    a = st.add_integration("tenable-a", "tenable", "US")
+    b = st.add_integration("tenable-b", "tenable", "EU")
+    st.set_integration_field(a, "base_url", "https://us")
+    st.set_integration_field(b, "base_url", "https://eu")
+    st.set_integration_field(a, "access_key", "vault:1")
+    assert st.get_integration(a)["config"]["base_url"] == "https://us"
+    assert st.get_integration(b)["config"]["base_url"] == "https://eu"
+    assert "access_key" not in st.get_integration(b)["config"]
+    st.remove_integration(a)
+    assert st.get_integration(a) is None and st.get_integration(b) is not None
